@@ -1,15 +1,20 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
-  description: API specification
+  version: 1.0.0
+  description: OpenEnv Email Triage Environment API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: environment
+    description: OpenEnv environment operations
+  - name: sessions
+    description: Session management
+  - name: results
+    description: Benchmark results
 paths:
   /healthz:
     get:
@@ -24,6 +29,163 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /env/reset:
+    post:
+      operationId: resetEnvironment
+      tags: [environment]
+      summary: Reset environment to initial state
+      description: Initializes a new episode for the specified task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetRequest"
+      responses:
+        "200":
+          description: Initial observation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetResponse"
+
+  /env/step:
+    post:
+      operationId: stepEnvironment
+      tags: [environment]
+      summary: Take an action in the environment
+      description: Advance the environment by one step with the given action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StepRequest"
+      responses:
+        "200":
+          description: Step result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StepResponse"
+
+  /env/state:
+    get:
+      operationId: getEnvironmentState
+      tags: [environment]
+      summary: Get current environment state
+      description: Returns the full current state of the active episode
+      parameters:
+        - name: session_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StateResponse"
+
+  /sessions:
+    get:
+      operationId: listSessions
+      tags: [sessions]
+      summary: List all sessions
+      description: Returns all benchmark sessions
+      responses:
+        "200":
+          description: List of sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Session"
+
+  /sessions/{id}:
+    get:
+      operationId: getSession
+      tags: [sessions]
+      summary: Get session by ID
+      description: Returns a specific session with full details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Session"
+        "404":
+          description: Session not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /results/leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [results]
+      summary: Get leaderboard
+      description: Returns ranked results across all sessions
+      responses:
+        "200":
+          description: Leaderboard data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /results/task-stats:
+    get:
+      operationId: getTaskStats
+      tags: [results]
+      summary: Get per-task statistics
+      description: Returns aggregated stats for each task
+      responses:
+        "200":
+          description: Task statistics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskStat"
+
+  /results/recent-steps:
+    get:
+      operationId: getRecentSteps
+      tags: [results]
+      summary: Get recent step history
+      description: Returns the last N steps across all sessions
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recent steps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StepRecord"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +196,374 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    ResetRequest:
+      type: object
+      properties:
+        task_id:
+          type: string
+          description: "One of: task_classify, task_prioritize, task_full_triage"
+        agent_name:
+          type: string
+          description: Name/identifier for the agent being evaluated
+        seed:
+          type: ["integer", "null"]
+          description: Random seed for reproducibility
+      required:
+        - task_id
+        - agent_name
+
+    ResetResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+        observation:
+          $ref: "#/components/schemas/Observation"
+        task_info:
+          $ref: "#/components/schemas/TaskInfo"
+      required:
+        - session_id
+        - observation
+        - task_info
+
+    StepRequest:
+      type: object
+      properties:
+        session_id:
+          type: string
+        action:
+          $ref: "#/components/schemas/Action"
+      required:
+        - session_id
+        - action
+
+    StepResponse:
+      type: object
+      properties:
+        observation:
+          $ref: "#/components/schemas/Observation"
+        reward:
+          type: number
+          description: Reward for this step (0.0 to 1.0)
+        done:
+          type: boolean
+          description: Whether the episode is complete
+        info:
+          $ref: "#/components/schemas/StepInfo"
+      required:
+        - observation
+        - reward
+        - done
+        - info
+
+    StateResponse:
+      type: object
+      properties:
+        session_id:
+          type: string
+        task_id:
+          type: string
+        agent_name:
+          type: string
+        step_count:
+          type: integer
+        total_reward:
+          type: number
+        done:
+          type: boolean
+        emails:
+          type: array
+          items:
+            $ref: "#/components/schemas/Email"
+        actions_taken:
+          type: array
+          items:
+            $ref: "#/components/schemas/Action"
+        current_score:
+          type: number
+      required:
+        - session_id
+        - task_id
+        - agent_name
+        - step_count
+        - total_reward
+        - done
+        - emails
+        - actions_taken
+        - current_score
+
+    Observation:
+      type: object
+      properties:
+        inbox:
+          type: array
+          items:
+            $ref: "#/components/schemas/Email"
+        step_count:
+          type: integer
+        time_remaining:
+          type: integer
+          description: Steps remaining in the episode
+        context:
+          type: string
+          description: Additional context for the agent
+        performance_hint:
+          type: ["string", "null"]
+          description: Optional feedback on previous action
+      required:
+        - inbox
+        - step_count
+        - time_remaining
+        - context
+
+    Email:
+      type: object
+      properties:
+        id:
+          type: string
+        subject:
+          type: string
+        sender:
+          type: string
+        sender_domain:
+          type: string
+        body:
+          type: string
+        timestamp:
+          type: string
+        category:
+          type: ["string", "null"]
+          description: "Ground truth: sales, support, legal, hr, executive, spam, newsletter, personal"
+        priority:
+          type: ["string", "null"]
+          description: "Ground truth: critical, high, medium, low"
+        has_attachment:
+          type: boolean
+        thread_id:
+          type: ["string", "null"]
+        requires_reply:
+          type: boolean
+        is_processed:
+          type: boolean
+      required:
+        - id
+        - subject
+        - sender
+        - sender_domain
+        - body
+        - timestamp
+        - has_attachment
+        - requires_reply
+        - is_processed
+
+    Action:
+      type: object
+      properties:
+        action_type:
+          type: string
+          description: "Type of action: classify, prioritize, reply, archive, escalate, flag, batch_classify, batch_prioritize"
+        email_id:
+          type: ["string", "null"]
+          description: Target email ID (for single-email actions)
+        email_ids:
+          type: ["array", "null"]
+          items:
+            type: string
+          description: Target email IDs (for batch actions)
+        category:
+          type: ["string", "null"]
+          description: "Category label: sales, support, legal, hr, executive, spam, newsletter, personal"
+        priority:
+          type: ["string", "null"]
+          description: "Priority label: critical, high, medium, low"
+        reply_text:
+          type: ["string", "null"]
+          description: Draft reply text (for reply actions)
+        categories:
+          type: ["array", "null"]
+          items:
+            type: string
+          description: Categories for batch classification
+        priorities:
+          type: ["array", "null"]
+          items:
+            type: string
+          description: Priorities for batch prioritization
+      required:
+        - action_type
+
+    TaskInfo:
+      type: object
+      properties:
+        task_id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        difficulty:
+          type: string
+        max_steps:
+          type: integer
+        scoring_criteria:
+          type: array
+          items:
+            type: string
+      required:
+        - task_id
+        - name
+        - description
+        - difficulty
+        - max_steps
+        - scoring_criteria
+
+    StepInfo:
+      type: object
+      properties:
+        action_valid:
+          type: boolean
+        action_feedback:
+          type: string
+        partial_score:
+          type: number
+        cumulative_score:
+          type: number
+        emails_processed:
+          type: integer
+        emails_remaining:
+          type: integer
+        penalty_applied:
+          type: boolean
+      required:
+        - action_valid
+        - action_feedback
+        - partial_score
+        - cumulative_score
+        - emails_processed
+        - emails_remaining
+        - penalty_applied
+
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+        task_id:
+          type: string
+        agent_name:
+          type: string
+        status:
+          type: string
+          description: "active, completed, failed"
+        step_count:
+          type: integer
+        total_reward:
+          type: number
+        final_score:
+          type: ["number", "null"]
+        started_at:
+          type: string
+        completed_at:
+          type: ["string", "null"]
+        seed:
+          type: ["integer", "null"]
+        accuracy:
+          type: ["number", "null"]
+        precision:
+          type: ["number", "null"]
+        recall:
+          type: ["number", "null"]
+      required:
+        - id
+        - task_id
+        - agent_name
+        - status
+        - step_count
+        - total_reward
+        - started_at
+
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        agent_name:
+          type: string
+        task_id:
+          type: string
+        score:
+          type: number
+        sessions_count:
+          type: integer
+        avg_steps:
+          type: number
+      required:
+        - rank
+        - agent_name
+        - task_id
+        - score
+        - sessions_count
+        - avg_steps
+
+    TaskStat:
+      type: object
+      properties:
+        task_id:
+          type: string
+        task_name:
+          type: string
+        difficulty:
+          type: string
+        total_runs:
+          type: integer
+        avg_score:
+          type: number
+        best_score:
+          type: number
+        avg_steps:
+          type: number
+        completion_rate:
+          type: number
+      required:
+        - task_id
+        - task_name
+        - difficulty
+        - total_runs
+        - avg_score
+        - best_score
+        - avg_steps
+        - completion_rate
+
+    StepRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        session_id:
+          type: string
+        step_number:
+          type: integer
+        action_type:
+          type: string
+        reward:
+          type: number
+        cumulative_reward:
+          type: number
+        created_at:
+          type: string
+      required:
+        - id
+        - session_id
+        - step_number
+        - action_type
+        - reward
+        - cumulative_reward
+        - created_at

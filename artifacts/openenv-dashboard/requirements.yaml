@@ -1,0 +1,15 @@
+packages:
+  "framer-motion": "For premium, smooth page transitions and micro-interactions"
+  "recharts": "For displaying beautiful task statistics and leaderboard data"
+  "date-fns": "For human-readable timestamp formatting in the email inbox"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility to merge tailwind classes without style conflicts"
+
+images:
+  - path: "artifacts/openenv-dashboard/public/images/hero-bg.png"
+    description: "Abstract ultra-premium dark obsidian background with glowing electric blue and subtle cyan fluid gradients, sleek glassmorphism style, modern data dashboard aesthetic"
+    aspect_ratio: "16:9"
+
+notes:
+  - "The API base path is /api and all API endpoints match the OpenAPI spec"
+  - "OpenEnv dashboard relies on the React Query hooks generated in @workspace/api-client-react"

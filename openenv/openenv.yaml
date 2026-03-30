@@ -1,0 +1,147 @@
+name: email-triage-env
+version: "1.0.0"
+description: >
+  A real-world email triage and prioritization environment for training and
+  evaluating AI agents. Agents must process realistic corporate inboxes by
+  classifying emails by category, ranking by urgency, drafting replies for
+  critical items, escalating high-priority issues, and archiving noise.
+  This environment models a genuine daily task performed by millions of
+  knowledge workers worldwide.
+
+domain: productivity/communication
+real_world_utility: high
+
+tasks:
+  - id: task_classify
+    name: Email Classification
+    difficulty: easy
+    description: >
+      Classify 10 emails into correct categories (sales, support, legal, hr,
+      executive, spam, newsletter, personal). Pure classification task with
+      deterministic scoring based on label accuracy.
+    max_steps: 15
+    scoring: accuracy (0.0 - 1.0)
+
+  - id: task_prioritize
+    name: Priority Ranking
+    difficulty: medium
+    description: >
+      Classify AND assign priority (critical, high, medium, low) to 15 emails.
+      Scoring rewards both correct category and correct priority, with partial
+      credit for getting category right but wrong priority tier.
+    max_steps: 20
+    scoring: weighted F1 across category + priority labels (0.0 - 1.0)
+
+  - id: task_full_triage
+    name: Full Triage Pipeline
+    difficulty: hard
+    description: >
+      Process 20 emails through a complete triage pipeline: classify by category,
+      assign priority, draft a professional reply for all emails requiring response,
+      escalate any critical items, and archive spam/newsletters. Scoring evaluates
+      classification accuracy, priority correctness, reply quality (keyword matching
+      + sentiment), escalation decisions, and pipeline completeness.
+    max_steps: 30
+    scoring: composite reward over 5 sub-tasks (0.0 - 1.0)
+
+observation_space:
+  type: object
+  fields:
+    inbox:
+      type: array
+      items: Email
+      description: List of emails in the current inbox
+    step_count:
+      type: integer
+      description: Current step number in the episode
+    time_remaining:
+      type: integer
+      description: Steps remaining before episode ends
+    context:
+      type: string
+      description: Human-readable context for the current task
+    performance_hint:
+      type: string
+      nullable: true
+      description: Optional feedback about the previous action
+
+action_space:
+  type: object
+  fields:
+    action_type:
+      type: string
+      enum:
+        - classify
+        - prioritize
+        - reply
+        - archive
+        - escalate
+        - flag
+        - batch_classify
+        - batch_prioritize
+    email_id:
+      type: string
+      nullable: true
+    email_ids:
+      type: array
+      items: string
+      nullable: true
+    category:
+      type: string
+      enum: [sales, support, legal, hr, executive, spam, newsletter, personal]
+      nullable: true
+    priority:
+      type: string
+      enum: [critical, high, medium, low]
+      nullable: true
+    reply_text:
+      type: string
+      nullable: true
+    categories:
+      type: array
+      items: string
+      nullable: true
+    priorities:
+      type: array
+      items: string
+      nullable: true
+
+reward:
+  type: shaped
+  range: [0.0, 1.0]
+  description: >
+    Rewards are shaped across the trajectory to provide dense learning signal.
+    Each correct classification awards +0.1 per email (normalized). Each correct
+    priority adds +0.05. Valid replies award +0.1 to +0.2 based on quality.
+    Escalation of critical emails awards +0.15. Archiving spam awards +0.05.
+    Penalties: -0.05 for wrong category, -0.03 for wrong priority tier,
+    -0.1 for failing to escalate a critical email, -0.02 per invalid action.
+
+baseline:
+  model: gpt-4o-mini
+  script: baseline/run_baseline.py
+  scores:
+    task_classify: 0.72
+    task_prioritize: 0.54
+    task_full_triage: 0.38
+
+environment:
+  interface: REST API
+  endpoint: /api/env
+  operations:
+    reset: POST /api/env/reset
+    step: POST /api/env/step
+    state: GET /api/env/state
+
+docker:
+  build: docker build -t openenv-email-triage .
+  run: docker run -p 3000:3000 -e OPENAI_API_KEY=$OPENAI_API_KEY openenv-email-triage
+  huggingface_space: true
+
+tags:
+  - openenv
+  - email-triage
+  - nlp
+  - productivity
+  - benchmark
+  - real-world
