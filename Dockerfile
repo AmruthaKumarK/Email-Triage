@@ -5,15 +5,14 @@ WORKDIR /app
 RUN npm install -g pnpm@10
 
 # Copy workspace config files
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.json tsconfig.base.json ./
+COPY package.json pnpm-workspace.yaml tsconfig.json tsconfig.base.json ./
 COPY lib/ ./lib/
 COPY artifacts/api-server/ ./artifacts/api-server/
 COPY artifacts/openenv-dashboard/ ./artifacts/openenv-dashboard/
-COPY scripts/ ./scripts/
 COPY openenv/ ./openenv/
 
 # Install all deps
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 # Build the API server
 RUN pnpm --filter @workspace/api-server run build
@@ -32,7 +31,7 @@ COPY --from=base /app/artifacts/api-server/dist ./artifacts/api-server/dist
 COPY --from=base /app/artifacts/openenv-dashboard/dist ./artifacts/openenv-dashboard/dist
 COPY --from=base /app/artifacts/api-server/package.json ./artifacts/api-server/package.json
 COPY --from=base /app/openenv/ ./openenv/
-COPY --from=base /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml ./
+COPY --from=base /app/package.json /app/pnpm-workspace.yaml ./
 
 # Install production deps only for API server
 WORKDIR /app/artifacts/api-server
