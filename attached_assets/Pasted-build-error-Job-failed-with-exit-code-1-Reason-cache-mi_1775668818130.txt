@@ -1,0 +1,76 @@
+build error
+Job failed with exit code: 1. Reason: cache miss: [production  8/13] COPY --from=base /app/package.json /app/pnpm-workspace.yaml ./
+cache miss: [base  2/11] WORKDIR /app
+cache miss: [production  5/13] COPY --from=base /app/artifacts/openenv-dashboard/dist ./artifacts/openenv-dashboard/dist
+cache miss: [production 12/13] RUN apt-get update && apt-get install -y python3 python3-pip && rm -rf /var/lib/apt/lists/*
+cache miss: [production 10/13] RUN pnpm install --prod
+cache miss: [base  6/11] COPY artifacts/api-server/ ./artifacts/api-server/
+cache miss: [base 10/11] RUN pnpm --filter @workspace/api-server run build
+cache miss: [production 13/13] RUN pip3 install pydantic --break-system-packages 2>/dev/null || pip3 install pydantic
+cache miss: [base  9/11] RUN pnpm install --no-frozen-lockfile
+cache miss: [production  7/13] COPY --from=base /app/openenv/ ./openenv/
+cache miss: [base  8/11] COPY openenv/ ./openenv/
+cache miss: [base  5/11] COPY lib/ ./lib/
+cache miss: [production  4/13] COPY --from=base /app/artifacts/api-server/dist ./artifacts/api-server/dist
+cache miss: [base  7/11] COPY artifacts/openenv-dashboard/ ./artifacts/openenv-dashboard/
+cache miss: [base  4/11] COPY package.json pnpm-workspace.yaml tsconfig.json tsconfig.base.json ./
+cache miss: [production  9/13] WORKDIR /app/artifacts/api-server
+cache miss: [base 11/11] RUN pnpm --filter @workspace/openenv-dashboard run build
+cache miss: [base  3/11] RUN npm install -g pnpm@10
+cache miss: [production  6/13] COPY --from=base /app/artifacts/api-server/package.json ./artifacts/api-server/package.json
+cache miss: [production 11/13] WORKDIR /app
+{"total":26,"completed":14,"user_total":21,"user_cached":0,"user_completed":9,"user_cacheable":20,"from":1,"miss":20,"client_duration_ms":10166}
+Build logs:
+
+===== Build Queued at 2026-04-08 17:18:32 / Commit SHA: 0340759 =====
+
+--> FROM docker.io/library/node:24-slim@sha256:b506e7321f176aae77317f99d67a24b272c1f09f1d10f1761f2773447d8da26c
+DONE 1.7s
+
+DONE 1.9s
+
+DONE 3.6s
+
+DONE 3.7s
+
+--> WORKDIR /app
+DONE 0.0s
+
+--> RUN npm install -g pnpm@10
+
+added 1 package in 1s
+
+1 package is looking for funding
+  run `npm fund` for details
+npm notice
+npm notice New minor version of npm available! 11.11.0 -> 11.12.1
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.12.1
+npm notice To update run: npm install -g npm@11.12.1
+npm notice
+DONE 1.7s
+
+--> COPY package.json pnpm-workspace.yaml tsconfig.json tsconfig.base.json ./
+DONE 0.0s
+
+--> COPY lib/ ./lib/
+DONE 0.0s
+
+--> COPY artifacts/api-server/ ./artifacts/api-server/
+DONE 0.0s
+
+--> COPY artifacts/openenv-dashboard/ ./artifacts/openenv-dashboard/
+DONE 0.0s
+
+--> COPY openenv/ ./openenv/
+DONE 0.0s
+
+--> RUN pnpm install --no-frozen-lockfile
+Scope: all 4 workspace projects
+/app/artifacts/api-server:
+ ERR_PNPM_WORKSPACE_PKG_NOT_FOUND  In artifacts/api-server: "@workspace/api-zod@workspace:*" is in the dependencies but no package named "@workspace/api-zod" is present in the workspace
+
+This error happened while installing a direct dependency of /app/artifacts/api-server
+
+Packages found in the workspace: 
+
+--> ERROR: process "/bin/sh -c pnpm install --no-frozen-lockfile" did not complete successfully: exit code: 1

@@ -1,6 +1,8 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
+import path from "path";
+import fs from "fs";
 import router from "./routes";
 import { logger } from "./lib/logger";
 
@@ -30,5 +32,22 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Serve the pre-built React dashboard in production
+if (process.env.NODE_ENV === "production") {
+  const staticDir = path.resolve(
+    import.meta.dirname,
+    "../../../openenv-dashboard/dist/public",
+  );
+  if (fs.existsSync(staticDir)) {
+    app.use(express.static(staticDir));
+    app.get("*", (_req: Request, res: Response) => {
+      res.sendFile(path.join(staticDir, "index.html"));
+    });
+    logger.info({ staticDir }, "Serving static dashboard");
+  } else {
+    logger.warn({ staticDir }, "Dashboard static files not found");
+  }
+}
 
 export default app;
