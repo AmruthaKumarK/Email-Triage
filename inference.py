@@ -55,7 +55,7 @@ client = OpenAI(
 # ---------------------------------------------------------------------------
 
 def _post(path: str, body: dict) -> dict:
-    url = f"{OPENENV_ENDPOINT}{path}"
+    url = f"{OPENENV_ENDPOINT.rstrip('/')}{path}"
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         url, data=data,
@@ -70,7 +70,7 @@ def _post(path: str, body: dict) -> dict:
 
 
 def _get(path: str) -> dict:
-    url = f"{OPENENV_ENDPOINT}{path}"
+    url = f"{OPENENV_ENDPOINT.rstrip('/')}{path}"
     req = urllib.request.Request(url, method="GET")
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
@@ -171,7 +171,7 @@ def run_episode(task_id: str) -> None:
 
     try:
         # Reset
-        reset = _post("/api/env/reset", {
+        reset = _post("/reset", {
             "task_id":    task_id,
             "agent_name": AGENT_NAME,
             "seed":       SEED,
@@ -208,7 +208,7 @@ def run_episode(task_id: str) -> None:
 
             # Step
             try:
-                step_result = _post("/api/env/step", {
+                step_result = _post("/step", {
                     "session_id": session_id,
                     "action":     action,
                 })
@@ -279,7 +279,7 @@ def main() -> None:
 
     # Verify environment is reachable
     try:
-        _get("/api/healthz")
+        _get("/healthz")
     except Exception as exc:
         print(f"ERROR: Cannot reach OpenEnv API at {OPENENV_ENDPOINT}: {exc}", file=sys.stderr)
         sys.exit(1)

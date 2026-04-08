@@ -4,6 +4,7 @@ import pinoHttp from "pino-http";
 import path from "path";
 import fs from "fs";
 import router from "./routes";
+import envRouter from "./routes/env";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -32,6 +33,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/api", router);
+
+// Root-level aliases required by OpenEnv spec checker
+// Checker hits POST /reset, POST /step, GET /state, GET /healthz directly
+app.get("/healthz", (_req, res) => res.json({ status: "ok" }));
+app.use("/", envRouter);
 
 // Serve the pre-built React dashboard in production
 if (process.env.NODE_ENV === "production") {

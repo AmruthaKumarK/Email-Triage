@@ -127,11 +127,11 @@ baseline:
 
 environment:
   interface: REST API
-  endpoint: /api/env
+  endpoint: /
   operations:
-    reset: POST /api/env/reset
-    step: POST /api/env/step
-    state: GET /api/env/state
+    reset: POST /reset
+    step: POST /step
+    state: GET /state
 
 docker:
   build: docker build -t openenv-email-triage .
