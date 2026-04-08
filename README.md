@@ -241,7 +241,12 @@ pnpm --filter @workspace/openenv-dashboard run dev
 |----------|----------|-------------|
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `PORT` | Yes | API server port |
-| `OPENAI_API_KEY` | Baseline only | For running the baseline agent |
+| `API_BASE_URL` | inference.py | Base URL of the OpenAI-compatible LLM API (default: `https://api.openai.com/v1`) |
+| `MODEL_NAME` | inference.py | Model identifier (default: `gpt-4o-mini`) |
+| `HF_TOKEN` | inference.py | Your Hugging Face / API key for LLM calls |
+| `OPENENV_ENDPOINT` | inference.py | OpenEnv REST API base URL (default: `http://localhost:3000`) |
+| `SEED` | inference.py | Random seed for reproducibility (default: `42`) |
+| `TASK` | inference.py | Single task to run, or `all` (default: `all`) |
 
 ### Docker
 
@@ -267,22 +272,61 @@ Environment variables to set in Space settings:
 
 ---
 
-## Baseline Inference Script
+## Inference Script (`inference.py`)
 
-Located at [`openenv/baseline/run_baseline.py`](./openenv/baseline/run_baseline.py).
+The submission-ready inference script lives at **[`inference.py`](./inference.py)** in the project root.
 
-Uses the OpenAI API to run a `gpt-4o-mini` agent against all 3 tasks.
+It follows the mandatory OpenEnv STDOUT format:
+
+```
+[START] task=<task_name> env=email-triage model=<model_name>
+[STEP]  step=<n> action=<action_json> reward=<0.00> done=<true|false> error=<msg|null>
+[END]   success=<true|false> steps=<n> score=<0.00> rewards=<r1,r2,...>
+```
+
+### Required environment variables
 
 ```bash
-# Run all tasks with seed=42
+export API_BASE_URL="https://api.openai.com/v1"   # or your active endpoint
+export MODEL_NAME="gpt-4o-mini"                    # model identifier
+export HF_TOKEN="sk-..."                           # your API key
+export OPENENV_ENDPOINT="http://localhost:3000"    # running OpenEnv API
+```
+
+### Running
+
+```bash
+# Install the openai package if not present
+pip install openai
+
+# Run all three tasks (task_classify → task_prioritize → task_full_triage)
+python inference.py
+
+# Run a single task
+TASK=task_classify python inference.py
+```
+
+### Example output
+
+```
+[START] task=task_classify env=email-triage model=gpt-4o-mini
+[STEP] step=1 action={"action_type":"batch_classify","email_ids":["email_000_5950","email_001_2341"],"categories":["hr","sales"]} reward=0.20 done=false error=null
+[STEP] step=2 action={"action_type":"batch_classify","email_ids":["email_002_9812"],"categories":["support"]} reward=0.10 done=false error=null
+...
+[END] success=true steps=8 score=0.72 rewards=0.20,0.10,0.15,...
+
+[START] task=task_prioritize env=email-triage model=gpt-4o-mini
+...
+```
+
+### Legacy baseline script
+
+[`openenv/baseline/run_baseline.py`](./openenv/baseline/run_baseline.py) is a human-readable development script with verbose output (not submission format).
+
+```bash
 python openenv/baseline/run_baseline.py \
   --endpoint http://localhost:3000 \
   --seed 42
-
-# Run single task
-python openenv/baseline/run_baseline.py \
-  --task task_classify \
-  --endpoint http://localhost:3000
 ```
 
 ### Reproducible Baseline Scores (seed=42, gpt-4o-mini)
